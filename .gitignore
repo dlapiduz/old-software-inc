@@ -1,0 +1,15 @@
+*.pyc
+*.pyo
+*.egg-info/
+*.db
+.coverage
+cover/
+venv/
+.venv/
+.py27/
+build/
+dist/
+__pycache__/
+
+# grader-only notes, kept out of the public repo
+_factory/

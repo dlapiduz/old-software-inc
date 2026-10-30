@@ -1,0 +1,9 @@
+*.pyc
+*.db
+venv/
+.venv/
+.py27/
+.coverage
+cover/
+_factory/
+.git/

@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<h2>Orders by status</h2>
+<table class="grid">
+  <tr>{% for status in statuses %}<th>{{ status_badge(status) }}</th>{% endfor %}</tr>
+  <tr>{% for status in statuses %}<td align="center"><a href="{{ url_for('orders.index', status=status) }}">{{ counts[status] }}</a></td>{% endfor %}</tr>
+</table>
+
+<h2>Recent orders</h2>
+<table class="grid">
+  <tr><th>Number</th><th>Customer</th><th>Status</th><th>Total</th><th>Created</th></tr>
+  {% for order in recent %}
+  <tr>
+    <td><a href="{{ url_for('orders.detail', number=order.number) }}">{{ order.number }}</a></td>
+    <td>{{ order.customer.name }}</td>
+    <td>{{ status_badge(order.status) }}</td>
+    <td align="right">{{ order.total|money }}</td>
+    <td>{{ order.created_at|dt }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5">No orders yet.</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Low stock</h2>
+<table class="grid">
+  <tr><th>SKU</th><th>Name</th><th>Stock</th><th>Reserved</th><th>Available</th></tr>
+  {% for p in low_stock %}
+  <tr class="warn">
+    <td>{{ p.sku }}</td><td>{{ p.name }}</td>
+    <td align="right">{{ p.stock }}</td><td align="right">{{ p.reserved }}</td><td align="right">{{ p.available }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5">Nothing is running low.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

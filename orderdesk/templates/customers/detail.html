@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block title %}{{ customer.account_number }}{% endblock %}
+{% block content %}
+<h1>{{ customer.account_number }} - {{ customer.name }}</h1>
+<table class="detail">
+  <tr><th>Email</th><td>{{ customer.email or '' }}</td></tr>
+  <tr><th>Phone</th><td>{{ customer.phone or '' }}</td></tr>
+  <tr><th>Tier</th><td>{{ customer.tier }}</td></tr>
+  <tr><th>Tax exempt</th><td>{% if customer.tax_exempt %}Yes{% else %}No{% endif %}</td></tr>
+  <tr><th>Credit limit</th><td>{% if customer.credit_limit_cents %}{{ customer.credit_limit|money }}{% else %}none{% endif %}</td></tr>
+  <tr><th>Open balance</th><td>{{ customer.open_balance()|money }}</td></tr>
+  <tr><th>Notes</th><td>{{ customer.notes or '' }}</td></tr>
+</table>
+{% if current_user.can_edit() %}
+<p>
+  <a class="button" href="{{ url_for('customers.edit', customer_id=customer.id) }}">Edit</a>
+  <a class="button" href="{{ url_for('orders.create', customer_id=customer.id) }}">New order</a>
+</p>
+{% endif %}
+
+<h2>Orders</h2>
+<table class="grid">
+  <tr><th>Number</th><th>Status</th><th>Total</th><th>Created</th></tr>
+  {% for order in orders %}
+  <tr>
+    <td><a href="{{ url_for('orders.detail', number=order.number) }}">{{ order.number }}</a></td>
+    <td>{{ status_badge(order.status) }}</td>
+    <td align="right">{{ order.total|money }}</td>
+    <td>{{ order.created_at|dt }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="4">No orders.</td></tr>
+  {% endfor %}
+</table>
+{% endblock %}

@@ -1,0 +1,16 @@
+# Pinned 2014-11 by ops. Do not bump without talking to Gary.
+Flask==0.10.1
+Werkzeug==0.9.6
+Jinja2==2.7.3
+MarkupSafe==0.23
+itsdangerous==0.24
+SQLAlchemy==0.9.8
+Flask-SQLAlchemy==1.0
+Flask-Login==0.2.11
+Flask-WTF==0.10.3
+WTForms==2.0.1
+Flask-Script==2.0.5
+simplejson==3.6.5
+unicodecsv==0.9.4
+python-dateutil==2.2
+six==1.8.0

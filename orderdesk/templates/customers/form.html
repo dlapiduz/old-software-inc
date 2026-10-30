@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}{% if customer %}Edit {{ customer.account_number }}{% else %}New customer{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if customer %}Edit {{ customer.account_number }}{% else %}New customer{% endif %}</h1>
+<form method="post">
+  {{ form.hidden_tag() }}
+  <table class="form">
+    {{ render_field(form.name, size=50) }}
+    {{ render_field(form.email, size=40) }}
+    {{ render_field(form.phone) }}
+    {{ render_field(form.tier) }}
+    {{ render_field(form.tax_exempt) }}
+    {{ render_field(form.credit_limit_amount) }}
+    {{ render_field(form.notes, rows=4, cols=50) }}
+  </table>
+  <input type="submit" value="Save">
+  <a href="{% if customer %}{{ url_for('customers.detail', customer_id=customer.id) }}{% else %}{{ url_for('customers.index') }}{% endif %}">Cancel</a>
+</form>
+{% endblock %}

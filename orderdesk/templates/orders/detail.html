@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge %}
+{% block title %}{{ order.number }}{% endblock %}
+{% block content %}
+<h1>Order {{ order.number }} {{ status_badge(order.status) }}</h1>
+<table class="detail">
+  <tr><th>Customer</th><td><a href="{{ url_for('customers.detail', customer_id=order.customer.id) }}">{{ order.customer.account_number }} - {{ order.customer.name }}</a> ({{ order.customer.tier }})</td></tr>
+  <tr><th>Created</th><td>{{ order.created_at|dt }}{% if order.created_by %} by {{ order.created_by.username }}{% endif %}</td></tr>
+  {% if order.submitted_at %}<tr><th>Submitted</th><td>{{ order.submitted_at|dt }}</td></tr>{% endif %}
+  {% if order.shipped_at %}<tr><th>Shipped</th><td>{{ order.shipped_at|dt }}</td></tr>{% endif %}
+  {% if order.invoiced_at %}<tr><th>Invoiced</th><td>{{ order.invoiced_at|dt }}</td></tr>{% endif %}
+  <tr><th>Notes</th><td>{{ order.notes or '' }}</td></tr>
+</table>
+
+<h2>Lines</h2>
+<table class="grid">
+  <tr><th>SKU</th><th>Product</th><th>Qty</th><th>Unit price</th><th>Discount</th><th>Line total</th><th></th></tr>
+  {% for line in order.lines %}
+  <tr>
+    <td>{{ line.product.sku }}</td>
+    <td>{{ line.product.name }}</td>
+    <td align="right">{{ line.quantity }}</td>
+    <td align="right">{{ line.unit_price|money }}</td>
+    <td align="right">{% if line.discount %}-{{ line.discount|money }}{% endif %}</td>
+    <td align="right">{{ line.total|money }}</td>
+    <td>
+      {% if order.is_editable and current_user.can_edit() %}
+      <form method="post" action="{{ url_for('orders.remove_line', number=order.number, line_id=line.id) }}" class="inline">
+        <input type="submit" value="remove">
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7">No lines yet.</td></tr>
+  {% endfor %}
+  <tr class="totals"><td colspan="5" align="right">Subtotal</td><td align="right">{{ order.subtotal|money }}</td><td></td></tr>
+  {% if order.line_discount %}<tr class="totals"><td colspan="5" align="right">Volume discounts</td><td align="right">-{{ order.line_discount|money }}</td><td></td></tr>{% endif %}
+  {% if order.discount %}<tr class="totals"><td colspan="5" align="right">Discount ({{ order.discount_reason }})</td><td align="right">-{{ order.discount|money }}</td><td></td></tr>{% endif %}
+  <tr class="totals"><td colspan="5" align="right">Tax</td><td align="right">{{ order.tax|money }}</td><td></td></tr>
+  <tr class="totals"><td colspan="5" align="right">Shipping</td><td align="right">{{ order.shipping|money }}</td><td></td></tr>
+  <tr class="totals grand"><td colspan="5" align="right">Total</td><td align="right">{{ order.total|money }}</td><td></td></tr>
+</table>
+
+{% if current_user.can_edit() %}
+  {% if order.is_editable %}
+  <h2>Add line</h2>
+  <form method="post" action="{{ url_for('orders.add_line', number=order.number) }}">
+    {{ line_form.hidden_tag() }}
+    {{ line_form.product_id() }} qty {{ line_form.quantity(size=5) }}
+    <input type="submit" value="Add">
+  </form>
+
+  <h2>Promo code</h2>
+  <form method="post" action="{{ url_for('orders.apply_promo', number=order.number) }}">
+    {{ promo_form.hidden_tag() }}
+    {{ promo_form.code(size=12) }}
+    <input type="submit" value="Apply">
+  </form>
+  {% endif %}
+
+  {% if order.allowed_actions() %}
+  <h2>Actions</h2>
+  <p>
+    {% for action in order.allowed_actions() %}
+    <form method="post" action="{{ url_for('orders.transition', number=order.number, action=action) }}" class="inline">
+      <input type="submit" value="{{ action|title }}"{% if action == 'approve' and not current_user.is_admin() %} disabled{% endif %}>
+    </form>
+    {% endfor %}
+  </p>
+  {% endif %}
+{% endif %}
+
+<h2>History</h2>
+<table class="grid">
+  <tr><th>When</th><th>Who</th><th>What</th><th>Detail</th></tr>
+  {% for entry in history %}
+  <tr>
+    <td>{{ entry.created_at|dt('%Y-%m-%d %H:%M:%S') }}</td>
+    <td>{{ entry.user.username if entry.user else 'system' }}</td>
+    <td>{{ entry.action }}</td>
+    <td>{{ entry.detail or '' }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

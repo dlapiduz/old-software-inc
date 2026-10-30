@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pagination %}
+{% block title %}Customers{% endblock %}
+{% block content %}
+<h1>Customers</h1>
+<form method="get" action="{{ url_for('customers.index') }}" class="search">
+  <input type="text" name="q" value="{{ q }}" placeholder="Name, account or email">
+  <input type="submit" value="Search">
+  {% if current_user.can_edit() %}<a class="button" href="{{ url_for('customers.create') }}">New customer</a>{% endif %}
+  <a href="{{ url_for('reports.export_customers') }}">Export CSV</a>
+</form>
+<table class="grid">
+  <tr><th>Account</th><th>Name</th><th>Email</th><th>Tier</th><th>Tax exempt</th><th>Credit limit</th></tr>
+  {% for c in page.items %}
+  <tr>
+    <td><a href="{{ url_for('customers.detail', customer_id=c.id) }}">{{ c.account_number }}</a></td>
+    <td>{{ c.name }}</td>
+    <td>{{ c.email or '' }}</td>
+    <td>{{ c.tier }}</td>
+    <td>{% if c.tax_exempt %}Y{% else %}N{% endif %}</td>
+    <td align="right">{% if c.credit_limit_cents %}{{ c.credit_limit|money }}{% else %}none{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6">No customers found.</td></tr>
+  {% endfor %}
+</table>
+{{ pagination(page, 'customers.index', q=q) }}
+{% endblock %}

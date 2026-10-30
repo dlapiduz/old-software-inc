@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}{% if product %}Edit {{ product.sku }}{% else %}New product{% endif %}{% endblock %}
+{% block content %}
+<h1>{% if product %}Edit {{ product.sku }}{% else %}New product{% endif %}</h1>
+<form method="post">
+  {{ form.hidden_tag() }}
+  <table class="form">
+    {{ render_field(form.sku) }}
+    {{ render_field(form.name, size=50) }}
+    {{ render_field(form.description, rows=4, cols=50) }}
+    {{ render_field(form.price_amount) }}
+    {{ render_field(form.stock) }}
+    {{ render_field(form.discontinued) }}
+  </table>
+  <input type="submit" value="Save">
+  <a href="{{ url_for('products.index') }}">Cancel</a>
+</form>
+{% endblock %}

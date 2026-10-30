@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pagination, status_badge %}
+{% block title %}Orders{% endblock %}
+{% block content %}
+<h1>Orders</h1>
+<p>
+  Filter:
+  <a href="{{ url_for('orders.index') }}">all</a>
+  {% for s in statuses %}| <a href="{{ url_for('orders.index', status=s) }}"{% if s == status %} class="current"{% endif %}>{{ s }}</a>{% endfor %}
+  {% if current_user.can_edit() %} | <a class="button" href="{{ url_for('orders.create') }}">New order</a>{% endif %}
+  | <a href="{{ url_for('reports.export_orders', status=status) }}">Export CSV</a>
+</p>
+<table class="grid">
+  <tr><th>Number</th><th>Customer</th><th>Status</th><th>Lines</th><th>Total</th><th>Created</th></tr>
+  {% for order in page.items %}
+  <tr>
+    <td><a href="{{ url_for('orders.detail', number=order.number) }}">{{ order.number }}</a></td>
+    <td>{{ order.customer.name }}</td>
+    <td>{{ status_badge(order.status) }}</td>
+    <td align="right">{{ order.lines|length }}</td>
+    <td align="right">{{ order.total|money }}</td>
+    <td>{{ order.created_at|dt }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="6">No orders.</td></tr>
+  {% endfor %}
+</table>
+{{ pagination(page, 'orders.index', status=status) }}
+{% endblock %}

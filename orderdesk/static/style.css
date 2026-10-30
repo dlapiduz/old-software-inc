@@ -1,0 +1,35 @@
+body { font-family: Verdana, Arial, sans-serif; font-size: 12px; margin: 0; background: #eef; color: #222; }
+a { color: #036; }
+#header { background: #036; color: #fff; padding: 6px 10px; }
+#header a { color: #fff; }
+#header .brand a { font-size: 18px; font-weight: bold; text-decoration: none; }
+#header .company { font-size: 11px; color: #9cf; margin-left: 6px; }
+#header .user { color: #9cf; margin-left: 8px; }
+#content { background: #fff; margin: 10px; padding: 10px 16px; border: 1px solid #99c; }
+#footer { text-align: center; color: #669; font-size: 10px; margin-bottom: 10px; }
+h1 { font-size: 18px; color: #036; }
+h2 { font-size: 14px; color: #036; border-bottom: 1px solid #ccd; margin-top: 20px; }
+table.grid { border-collapse: collapse; width: 100%; }
+table.grid th { background: #ccd; text-align: left; padding: 3px 6px; }
+table.grid td { border-bottom: 1px solid #ddd; padding: 3px 6px; }
+table.grid tr.warn td { background: #ffe; }
+table.grid tr.muted td { color: #999; }
+table.grid tr.totals td { border: none; }
+table.grid tr.grand td { font-weight: bold; border-top: 2px solid #036; }
+table.form th, table.detail th { text-align: right; padding: 3px 8px; vertical-align: top; color: #446; }
+.flash { padding: 6px 10px; margin-bottom: 8px; border: 1px solid; }
+.flash-success { background: #efe; border-color: #6a6; }
+.flash-error { background: #fee; border-color: #c66; }
+.flash-info { background: #eef; border-color: #66c; }
+.field-error { color: #c00; font-size: 11px; }
+.status { padding: 1px 5px; border: 1px solid #999; background: #eee; font-size: 11px; text-transform: uppercase; }
+.status-submitted { background: #ffd; }
+.status-approved { background: #dfd; }
+.status-shipped { background: #ddf; }
+.status-invoiced { background: #cfc; }
+.status-cancelled { background: #fdd; color: #900; }
+.pagination { margin-top: 8px; }
+.pagination a { margin-left: 8px; }
+form.inline { display: inline; }
+a.current { font-weight: bold; }
+a.button { border: 1px solid #036; padding: 1px 6px; background: #eef; text-decoration: none; }

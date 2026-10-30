@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Sales report{% endblock %}
+{% block content %}
+<h1>Sales report</h1>
+<form method="get" action="{{ url_for('reports.sales') }}">
+  From <input type="text" name="start" value="{{ start.isoformat() }}" size="10">
+  to <input type="text" name="end" value="{{ end.isoformat() }}" size="10">
+  <input type="submit" value="Run">
+</form>
+
+<table class="detail">
+  <tr><th>Orders shipped/invoiced</th><td>{{ summary.count }}</td></tr>
+  <tr><th>Revenue</th><td>{{ summary.revenue|money }}</td></tr>
+  <tr><th>Average order</th><td>{{ summary.average|money }}</td></tr>
+</table>
+
+<h2>Revenue by tier</h2>
+<table class="grid">
+  <tr><th>Tier</th><th>Revenue</th></tr>
+  {% for tier, amount in summary.by_tier|dictsort %}
+  <tr><td>{{ tier }}</td><td align="right">{{ amount|money }}</td></tr>
+  {% endfor %}
+</table>
+
+<h2>Top products</h2>
+<table class="grid">
+  <tr><th>SKU</th><th>Name</th><th>Units</th><th>Revenue</th></tr>
+  {% for row in top %}
+  <tr><td>{{ row.sku }}</td><td>{{ row.name }}</td><td align="right">{{ row.quantity }}</td><td align="right">{{ row.revenue|money }}</td></tr>
+  {% else %}
+  <tr><td colspan="4">No sales in this period.</td></tr>
+  {% endfor %}
+</table>
+
+<p><a href="{{ url_for('reports.export_orders') }}">Export all orders (CSV)</a></p>
+{% endblock %}

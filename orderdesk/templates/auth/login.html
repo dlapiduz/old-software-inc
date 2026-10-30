@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}Log in{% endblock %}
+{% block content %}
+<h1>Log in</h1>
+<form method="post" action="{{ url_for('auth.login', next=request.args.get('next')) }}">
+  {{ form.hidden_tag() }}
+  <table class="form">
+    {{ render_field(form.username) }}
+    {{ render_field(form.password) }}
+    {{ render_field(form.remember) }}
+  </table>
+  <input type="submit" value="Log in">
+</form>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_macros.html" import pagination %}
+{% block title %}Products{% endblock %}
+{% block content %}
+<h1>Products</h1>
+<p>
+  {% if show == 'all' %}<a href="{{ url_for('products.index') }}">Hide discontinued</a>
+  {% else %}<a href="{{ url_for('products.index', show='all') }}">Show discontinued</a>{% endif %}
+  {% if current_user.is_admin() %}| <a class="button" href="{{ url_for('products.create') }}">New product</a>{% endif %}
+</p>
+<table class="grid">
+  <tr><th>SKU</th><th>Name</th><th>Price</th><th>Stock</th><th>Reserved</th><th>Available</th><th></th></tr>
+  {% for p in page.items %}
+  <tr{% if p.discontinued %} class="muted"{% endif %}>
+    <td>{{ p.sku }}</td>
+    <td>{{ p.name }}{% if p.discontinued %} (discontinued){% endif %}</td>
+    <td align="right">{{ p.price|money }}</td>
+    <td align="right">{{ p.stock }}</td>
+    <td align="right">{{ p.reserved }}</td>
+    <td align="right">{{ p.available }}</td>
+    <td>{% if current_user.is_admin() %}<a href="{{ url_for('products.edit', product_id=p.id) }}">edit</a>{% endif %}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="7">No products.</td></tr>
+  {% endfor %}
+</table>
+{{ pagination(page, 'products.index', show=show) }}
+{% endblock %}

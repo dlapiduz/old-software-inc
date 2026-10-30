@@ -1,0 +1,19 @@
+{% macro render_field(field) %}
+  <tr>
+    <th>{{ field.label }}</th>
+    <td>
+      {{ field(**kwargs)|safe }}
+      {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+    </td>
+  </tr>
+{% endmacro %}
+
+{% macro pagination(page, endpoint) %}
+  <div class="pagination">
+    Page {{ page.page }} of {{ page.pages }} ({{ page.total }} records)
+    {% if page.has_prev %}<a href="{{ url_for(endpoint, page=page.prev_num, **kwargs) }}">&laquo; Prev</a>{% endif %}
+    {% if page.has_next %}<a href="{{ url_for(endpoint, page=page.next_num, **kwargs) }}">Next &raquo;</a>{% endif %}
+  </div>
+{% endmacro %}
+
+{% macro status_badge(status) %}<span class="status status-{{ status }}">{{ status }}</span>{% endmacro %}

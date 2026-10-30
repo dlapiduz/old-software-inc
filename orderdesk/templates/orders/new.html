@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "_macros.html" import render_field %}
+{% block title %}New order{% endblock %}
+{% block content %}
+<h1>New order</h1>
+<form method="post" action="{{ url_for('orders.create') }}">
+  {{ form.hidden_tag() }}
+  <table class="form">
+    {{ render_field(form.customer_id) }}
+    {{ render_field(form.notes, rows=3, cols=50) }}
+  </table>
+  <input type="submit" value="Create draft">
+</form>
+{% endblock %}
