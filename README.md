@@ -145,7 +145,11 @@ orderdesk/
   templates/ static/
 tests/                 nose test suite
 BACKLOG.md             open tickets
+scripts/create_issues.py  creates the backlog as GitHub issues (Python 3 + gh)
 ```
+
+To (re)create the GitHub issues and labels, run `scripts/create_issues.py --dry-run`
+first, then without `--dry-run`. It skips tickets that already exist.
 
 ## Tests
 
