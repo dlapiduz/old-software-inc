@@ -89,7 +89,7 @@ def price_order(order, tax_rate=None, today=None):
 
     merchandise = net - quote.discount
     if not customer.tax_exempt:
-        quote.tax = quote.subtotal * tax_rate
+        quote.tax = merchandise * tax_rate
     if order.lines and merchandise < FREE_SHIPPING_OVER:
         quote.shipping = FLAT_SHIPPING
     return quote
