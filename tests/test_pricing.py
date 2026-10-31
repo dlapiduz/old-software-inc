@@ -57,6 +57,43 @@ class PriceOrderTest(AppTestCase):
         eq_(order.tax, Money(0))
         eq_(order.total, Money(3000 + 1500))
 
+    def test_tax_is_charged_after_tier_discount(self):
+        # A gold customer gets a 10% tier discount. One unit at 100000 cents
+        # stays below the volume break, so the tier discount is the only one.
+        # Tax must be 8.25% of the discounted $900.00 (= $74.25), not of the
+        # undiscounted $1,000.00 (= $82.50).
+        product = make_product(price_cents=100000)
+        order = make_order(customer=make_customer(tier='gold'), lines=[(product, 1)])
+        eq_(order.subtotal, Money(100000))
+        eq_(order.discount, Money(10000))
+        eq_(order.tax_cents, 7425)
+
+    def test_tax_is_charged_after_promo_discount(self):
+        # A 20% promo code on a $100.00 order (standard tier, no tier
+        # discount) takes off $20.00. Tax is 8.25% of the remaining $80.00
+        # (= $6.60), not of the original $100.00 (= $8.25).
+        make_promo('SAVE20', 20)
+        order = make_order(lines=[(self.widget, 10)])
+        order.promo_code = 'SAVE20'
+        order.recalculate()
+        eq_(order.discount, Money(2000))
+        eq_(order.tax, Money(660))
+
+    def test_tax_is_charged_after_volume_discount(self):
+        # 100 units reaches the volume break, giving a 3% line discount of
+        # $30.00 on a $1,000.00 line. Tax is 8.25% of the discounted $970.00,
+        # so the volume discount also reduces the tax base.
+        order = make_order(lines=[(self.widget, 100)])
+        eq_(order.line_discount, Money(3000))
+        eq_(order.tax, Money(97000) * Decimal('0.0825'))
+
+    def test_tax_exempt_customer_pays_no_tax_with_discount(self):
+        # Guards the tax_exempt check: a discounted order for an exempt
+        # customer must still have $0.00 tax.
+        order = make_order(customer=self.exempt('gold'), lines=[(self.widget, 10)])
+        eq_(order.discount, Money(1000))
+        eq_(order.tax, Money(0))
+
     def test_volume_discount_on_line(self):
         order = make_order(customer=self.exempt(), lines=[(self.widget, 100)])
         line = order.lines[0]
