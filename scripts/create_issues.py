@@ -32,6 +32,9 @@ LABELS = {
     'size: medium': ('7fc8a0', 'A day or so, touches several modules'),
     'size: large': ('2d7a50', 'Multi-day, cross-cutting change'),
     'good first issue': ('7057ff', 'Small and self-contained'),
+    # policy waivers, see CONTRIBUTING.md
+    'no-tests-needed': ('ededed', 'Maintainer waiver: PR changes code without changing tests'),
+    'tests-removed-ok': ('ededed', 'Maintainer waiver: PR may reduce the number of tests'),
 }
 
 REGRESSION = '- [ ] A regression test fails before the fix and passes after it\n'

@@ -161,6 +161,9 @@ python manage.py test
 
 Tests use an in-memory SQLite database and the `testing` config.
 
+CI (GitHub Actions) runs the suite in Docker with a coverage floor, plus the
+repository policies in [CONTRIBUTING.md](CONTRIBUTING.md) (`make policies`).
+
 ## License
 
 MIT, see [LICENSE](LICENSE). The software is provided "as is", without

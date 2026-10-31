@@ -1,0 +1,33 @@
+name: Policies
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    # Title and label changes affect the pull request policies.
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: policies-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  policies:
+    name: Policies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Repository policies
+        if: github.event_name != 'pull_request'
+        run: python3 scripts/check_policies.py
+      - name: Repository and pull request policies
+        if: github.event_name == 'pull_request'
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+        run: python3 scripts/check_policies.py --base "origin/${{ github.base_ref }}"

@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (Docker)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # The interpreter comes from the Dockerfile, so this job follows
+      # whatever Python version the Dockerfile uses.
+      - run: make docker-coverage
