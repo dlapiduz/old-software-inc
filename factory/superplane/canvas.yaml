@@ -8,7 +8,7 @@
 #
 # Constants that differ per install:
 #   Fabro API         http://10.0.5.29:32276/api/v1
-#   workflow version  735f1c964d5abab8eec87ec3197e610ea2fa599ec705f89e7d2429d811e35911
+#   workflow version  a6d46eedb893d50355ddd74a93360ca7d659b823e5bbfb0355c48e599d07ce26
 #                     (factory/fabro/register.sh; re-run and update after
 #                     changing anything under factory/fabro/ticket_to_pr)
 #   secret            organization secret `fabro`, key `token` (Fabro dev token)
@@ -62,7 +62,7 @@ spec:
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         contentType: application/json
         json:
-          workflow_version_id: 735f1c964d5abab8eec87ec3197e610ea2fa599ec705f89e7d2429d811e35911
+          workflow_version_id: a6d46eedb893d50355ddd74a93360ca7d659b823e5bbfb0355c48e599d07ce26
           target: { kind: git, repo: '{{ root().data.repository.full_name }}', branch: main }
           # The repo's CI wants the PR title to start with the issue key, and
           # issues here are titled "OD-NNN: ...".
@@ -203,7 +203,7 @@ spec:
       component: wait
       configuration:
         mode: interval
-        waitFor: 30
+        waitFor: '30'
         unit: seconds
       position: { x: 2172, 'y': -240 }
       isCollapsed: false
