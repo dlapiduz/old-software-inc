@@ -8,11 +8,11 @@ or a comment explaining why not. A person always reviews and merges.
 ```
 GitHub (dlapiduz/old-software-inc)
   │  issues / issue_comment webhooks
-  ▼  https://superplane-hooks.lapiduz.com  (Cloudflare Tunnel, webhook paths only)
-SuperPlane  VM 127, 10.0.5.28   app "Fabro ticket to PR"  (factory/superplane/canvas.yaml)
+  ▼  Cloudflare Tunnel (webhook paths only; the only public ingress)
+SuperPlane  own VM               app "Fabro ticket to PR"  (factory/superplane/canvas.yaml)
   │  HTTP + bearer token, LAN only, every 60 s while a run is open
   ▼
-Fabro       VM 128, 10.0.5.29:32276   workflow ticket_to_pr  (factory/fabro/ticket_to_pr)
+Fabro       own VM, LAN-only API   workflow ticket_to_pr  (factory/fabro/ticket_to_pr)
   │  Docker sandbox per run (python:2.7.18): clone, plan, implement, test
   ├─▶ api.anthropic.com   Haiku 5.5 plans, Sonnet 5.5 writes code
   └─▶ github.com          GitHub App fabro-diego pushes the run branch, opens the PR
@@ -57,20 +57,21 @@ opens a non-draft PR with `auto_merge = false`.
 
 | Piece | Where | Start / stop / restart | Upgrade |
 |---|---|---|---|
-| Fabro | VM 128, `/opt/fabro`, systemd `fabro` (compose) | `systemctl start\|stop\|restart fabro` | bump `fabro_version` in homelab `vars.yml` (nightly tags, no `v` prefix: `0.403.0-nightly.0`), push; Semaphore applies |
+| Fabro | Fabro VM, `/opt/fabro`, systemd `fabro` (compose) | `systemctl start\|stop\|restart fabro` | bump `fabro_version` in homelab `vars.yml` (nightly tags, no `v` prefix: `0.403.0-nightly.0`), push; Semaphore applies |
 | Fabro config | `/opt/fabro/settings.toml` (rendered by the `fabro` Ansible role) | changes restart the container | edit `roles/fabro/templates/settings.toml.j2` |
 | Sandbox env | Fabro SQLite, environment `default` | upserted by the role | edit `fabro_env_spec` in `vars.yml` |
 | Workflow | `factory/fabro/ticket_to_pr` | n/a | edit, then run `factory/fabro/register.sh` on the Fabro VM or SuperPlane host. It sets the Fabro variable `TICKET_TO_PR_VERSION`, which the app reads per run, so SuperPlane needs no change |
 | SuperPlane app | canvas "Fabro ticket to PR" | pause/resume in the UI | edit `factory/superplane/canvas.yaml`, run `import.sh` (creates a new canvas version) |
-| SuperPlane | VM 127, systemd `superplane` | see homelab `CLAUDE.md` | homelab `superplane_*` vars |
+| SuperPlane | SuperPlane VM, systemd `superplane` | see homelab `CLAUDE.md` | homelab `superplane_*` vars |
 
 Both VMs come back on boot (`on_boot = true`, systemd units enabled). Fabro's
 state is SQLite on `/opt/fabro/storage`; it is not in the Proxmox backup job
 (an evaluation box), so a rebuild loses run history but nothing else: config,
 secrets and the environment are re-applied by Ansible.
 
-Logs: `ssh diego@10.0.5.29 sudo docker logs -f fabro`; run detail at
-`https://fabro.home.lapiduz.com/runs/<id>` (log in with the dev token).
+Logs: `sudo docker logs -f fabro` on the Fabro VM; run detail at
+`<Fabro web URL>/runs/<id>` (home network only; log in with the dev token).
+Issue comments carry the run id, never an internal link.
 SuperPlane: the app's run history in the UI.
 
 ## Secrets (names only)
@@ -97,14 +98,14 @@ None of these are in this repository.
 - **Branch protection:** ruleset "main: PRs only, no agent merges" on `main`:
   PR with 1 approval (stale approvals dismissed, last push must be approved by
   someone else), no force-push, no deletion. Repo admins can bypass.
-- **Fabro API exposure:** published on 10.0.5.29 only; `fabro-firewall.service`
+- **Fabro API exposure:** published on the Fabro VM's LAN address only; `fabro-firewall.service`
   (DOCKER-USER chain `FABRO-API`) admits new connections to 32276 from
-  10.0.5.28 (SuperPlane) and 10.0.5.2 (Caddy, for the web UI) and drops the
+  the SuperPlane VM and the reverse proxy (for the web UI) and drops the
   rest. Nothing is exposed to the internet. Loopback is used by the role and
   telegraf.
 - **SuperPlane egress:** SuperPlane blocks canvas HTTP to private ranges.
   `BLOCKED_PRIVATE_IP_RANGES` keeps that list with a single /32 hole for
-  10.0.5.29, so canvases still can't reach the rest of the homelab.
+  the Fabro VM, so canvases still can't reach the rest of the homelab.
 
 ## Firewall: proposed egress rules for the Fabro VM
 
@@ -115,7 +116,7 @@ The intended allowlist:
 
 | Who | Destination | Why |
 |---|---|---|
-| sandboxes + fabro | 10.0.1.4:53 (Pi-hole) | DNS |
+| sandboxes + fabro | the LAN DNS resolver :53 | DNS |
 | sandboxes | `github.com`, `api.github.com`, `codeload.github.com`, `objects.githubusercontent.com` :443 | clone, push the run branch |
 | sandboxes | `pypi.org`, `files.pythonhosted.org` :443 | `pip install` |
 | sandboxes | `deb.debian.org`, `security.debian.org` :80/443 | only if an agent installs OS packages |
@@ -128,14 +129,14 @@ Hostname rules can't be enforced with plain iptables (these hosts sit behind
 large, changing CDNs). The workable design is an egress proxy:
 
 1. Put sandboxes on a dedicated bridge (`fabro-sandbox`) and add, in
-   `DOCKER-USER`: allow established, allow DNS to 10.0.1.4, allow the bridge
+   `DOCKER-USER`: allow established, allow DNS to the LAN resolver, allow the bridge
    to the proxy, drop everything else from that bridge.
 2. Run a forward proxy (squid or tinyproxy) on the VM with a domain allowlist
    (the hosts above, CONNECT to :443 only).
 3. Set `HTTPS_PROXY`/`HTTP_PROXY`/`NO_PROXY` in the sandbox environment's
    `env` (`fabro_env_spec.env`); git, pip and curl honour them.
-4. Block RFC 1918 destinations except 10.0.1.4:53 at the VM, and (defence in
-   depth) a UniFi rule from 10.0.5.29 to the other VLANs.
+4. Block RFC 1918 destinations except the resolver's :53 at the VM, and (defence in
+   depth) a router rule from the Fabro VM to the other VLANs.
 
 Until then the mitigations are: the VM is its own kernel, the GitHub token in
 the sandbox is scoped to this one repo, `main` is protected, and Fabro's API
