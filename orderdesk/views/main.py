@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, jsonify, render_template
 from flask.ext.login import login_required
 
 from orderdesk.extensions import db
@@ -18,3 +18,8 @@ def dashboard():
     recent = Order.query.order_by(Order.created_at.desc()).limit(10).all()
     return render_template('dashboard.html', counts=counts, statuses=ORDER_STATUSES,
                            recent=recent, low_stock=low_stock_products())
+
+
+@bp.route('/health')
+def health():
+    return jsonify(status='ok')

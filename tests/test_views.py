@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 
+import simplejson as json
 from nose.tools import eq_
+from sqlalchemy import event
 
 from orderdesk.extensions import db
 from orderdesk.models import AuditEntry, Customer, Order, Product
@@ -65,6 +67,34 @@ class DashboardTest(AppTestCase):
         eq_(resp.status_code, 200)
         self.assertTrue('SO-000001' in resp.data)
         self.assertTrue('LOW-1' in resp.data)
+
+
+class HealthViewsTest(AppTestCase):
+
+    def test_health_returns_ok_json(self):
+        resp = self.client.get('/health')
+        eq_(resp.status_code, 200)
+        eq_(resp.mimetype, 'application/json')
+        eq_(json.loads(resp.data), {'status': 'ok'})
+
+    def test_health_needs_no_login(self):
+        resp = self.client.get('/health')
+        eq_(resp.status_code, 200)
+        self.assertFalse('Location' in resp.headers)
+
+    def test_health_does_not_touch_database(self):
+        statements = []
+
+        def record(conn, cursor, statement, *args):
+            statements.append(statement)
+
+        event.listen(db.engine, 'before_cursor_execute', record)
+        try:
+            resp = self.client.get('/health')
+        finally:
+            event.remove(db.engine, 'before_cursor_execute', record)
+        eq_(resp.status_code, 200)
+        eq_(statements, [])
 
 
 class CustomerViewsTest(AppTestCase):
