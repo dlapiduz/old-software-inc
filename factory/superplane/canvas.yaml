@@ -1,0 +1,379 @@
+# SuperPlane app: GitHub issue labelled `fabro` -> Fabro run -> PR, with the
+# planner's questions relayed through issue comments. Imported by
+# factory/superplane/import.sh. Design notes in factory/RUNBOOK.md.
+#
+# Fabro is LAN-only and cannot call back (its HTTP hooks can't carry a secret,
+# and SuperPlane's webhook paths are public), so this app polls Fabro: one
+# GET /runs/{id} per iteration gives status, the pending question and the PR.
+#
+# Constants that differ per install:
+#   Fabro API         http://10.0.5.29:32276/api/v1
+#   workflow version  735f1c964d5abab8eec87ec3197e610ea2fa599ec705f89e7d2429d811e35911
+#                     (factory/fabro/register.sh; re-run and update after
+#                     changing anything under factory/fabro/ticket_to_pr)
+#   secret            organization secret `fabro`, key `token` (Fabro dev token)
+#   integration       github-dlapiduz
+apiVersion: v1
+kind: Canvas
+metadata:
+  name: Fabro ticket to PR
+  description: Label an issue `fabro`; Fabro plans, implements, tests and opens a PR.
+spec:
+  nodes:
+    # ── Start: issue labelled `fabro` ────────────────────────────────────────
+    - id: on-issue-labeled
+      name: On issue labeled
+      type: TYPE_TRIGGER
+      component: github.onIssue
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        actions: [labeled]
+        repository: dlapiduz/old-software-inc
+      position: { x: 72, 'y': 0 }
+      isCollapsed: false
+    - id: is-fabro-label
+      name: Label is fabro?
+      type: TYPE_ACTION
+      component: filter
+      configuration:
+        expression: root().data.label.name == "fabro" && root().data.issue.pull_request == nil
+      position: { x: 372, 'y': 0 }
+      isCollapsed: false
+    # Public repo, so the comments read needs no token (60 req/h per IP).
+    - id: get-issue-comments
+      name: Get issue comments
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: 'https://api.github.com/repos/{{ root().data.repository.full_name }}/issues/{{ root().data.issue.number }}/comments?per_page=100'
+        headers:
+          - { name: Accept, value: application/vnd.github+json }
+        timeoutSeconds: 30
+      position: { x: 672, 'y': 0 }
+      isCollapsed: false
+    - id: create-fabro-run
+      name: Create Fabro run
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: http://10.0.5.29:32276/api/v1/runs
+        authorization: { type: bearer, credential: { secret: fabro, key: token } }
+        contentType: application/json
+        json:
+          workflow_version_id: 735f1c964d5abab8eec87ec3197e610ea2fa599ec705f89e7d2429d811e35911
+          target: { kind: git, repo: '{{ root().data.repository.full_name }}', branch: main }
+          # The repo's CI wants the PR title to start with the issue key, and
+          # issues here are titled "OD-NNN: ...".
+          title: '{{ root().data.issue.title[:100] }}'
+          args:
+            inputs:
+              repo: '{{ root().data.repository.full_name }}'
+              issue_number: '{{ string(root().data.issue.number) }}'
+              issue_title: '{{ root().data.issue.title }}'
+              issue_body: '{{ root().data.issue.body ?? "" }}'
+              issue_comments: '{{ join(map($["Get issue comments"].data.body, {.user.login + ": " + .body}), "\n\n") }}'
+        timeoutSeconds: 60
+      position: { x: 972, 'y': 0 }
+      isCollapsed: false
+    - id: start-fabro-run
+      name: Start Fabro run
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}/start'
+        authorization: { type: bearer, credential: { secret: fabro, key: token } }
+        timeoutSeconds: 60
+      position: { x: 1272, 'y': 0 }
+      isCollapsed: false
+    - id: comment-run-started
+      name: Comment run started
+      type: TYPE_ACTION
+      component: github.createIssueComment
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        repository: '{{ root().data.repository.full_name }}'
+        issueNumber: '{{ string(root().data.issue.number) }}'
+        body: |-
+          Fabro picked this up (run `{{ $["Create Fabro run"].data.body.id }}`): plan, implement, run the test suite, then open a pull request.
+
+          If the planner has a question it will appear here; reply in a comment and it goes back to Fabro.
+          Run page (home network / Tailscale): {{ $["Create Fabro run"].data.body.links.web }}
+      position: { x: 1572, 'y': 0 }
+      isCollapsed: false
+
+    # ── Poll until the run ends ──────────────────────────────────────────────
+    # 100 iterations x 60s ~ 100 minutes of watching, which also bounds how long
+    # a question can wait for an answer.
+    - id: poll-run
+      name: Poll Fabro run
+      type: TYPE_ACTION
+      component: loop
+      configuration:
+        untilExpression: $["Get Fabro run"].data.body.lifecycle.status.kind in ["succeeded", "failed", "dead"]
+        maxIterations: 100
+        timeoutSeconds: 21600
+        delayBetweenIterations: { enabled: true, strategy: fixed, intervalSeconds: 60 }
+      position: { x: 1872, 'y': 0 }
+      isCollapsed: false
+    - id: get-fabro-run
+      name: Get Fabro run
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}'
+        authorization: { type: bearer, credential: { secret: fabro, key: token } }
+        timeoutSeconds: 30
+      position: { x: 1872, 'y': 240 }
+      isCollapsed: false
+    - id: has-question
+      name: Waiting on a question?
+      type: TYPE_ACTION
+      component: if
+      configuration:
+        expression: $["Get Fabro run"].data.body.current_question != nil
+      position: { x: 2172, 'y': 240 }
+      isCollapsed: false
+    # current_question has only the text; the answer endpoint needs the id.
+    - id: list-questions
+      name: List Fabro questions
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}/questions'
+        authorization: { type: bearer, credential: { secret: fabro, key: token } }
+        timeoutSeconds: 30
+      position: { x: 2472, 'y': 240 }
+      isCollapsed: false
+    # A pending question is seen on every poll until it is answered; post once.
+    - id: question-already-posted
+      name: Question already posted?
+      type: TYPE_ACTION
+      component: readMemory
+      configuration:
+        namespace: fabro_questions
+        resultMode: latest
+        emitMode: allAtOnce
+        matchList:
+          - { name: run_id, value: '{{ $["Create Fabro run"].data.body.id }}' }
+          - { name: question_id, value: '{{ $["List Fabro questions"].data.body.data[0].id }}' }
+      position: { x: 2772, 'y': 240 }
+      isCollapsed: false
+    - id: post-question
+      name: Post question on issue
+      type: TYPE_ACTION
+      component: github.createIssueComment
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        repository: '{{ root().data.repository.full_name }}'
+        issueNumber: '{{ string(root().data.issue.number) }}'
+        body: |-
+          **Fabro has a question before it can continue:**
+
+          {{ $["List Fabro questions"].data.body.data[0].context_display ?? "" }}
+
+          > {{ $["List Fabro questions"].data.body.data[0].text }}
+
+          Reply with a comment on this issue and the answer is sent back to the run.
+      position: { x: 3072, 'y': 240 }
+      isCollapsed: false
+    - id: remember-question
+      name: Remember pending question
+      type: TYPE_ACTION
+      component: addMemory
+      configuration:
+        namespace: fabro_questions
+        valueList:
+          - { name: run_id, value: '{{ $["Create Fabro run"].data.body.id }}' }
+          - { name: question_id, value: '{{ $["List Fabro questions"].data.body.data[0].id }}' }
+          - { name: issue_number, value: '{{ string(root().data.issue.number) }}' }
+          - { name: status, value: pending }
+      position: { x: 3372, 'y': 240 }
+      isCollapsed: false
+
+    # ── Report the outcome ───────────────────────────────────────────────────
+    # PR creation finishes just after the run does, so read the run once more.
+    - id: settle
+      name: Let the PR land
+      type: TYPE_ACTION
+      component: wait
+      configuration:
+        mode: interval
+        waitFor: 30
+        unit: seconds
+      position: { x: 2172, 'y': -240 }
+      isCollapsed: false
+    - id: get-final-run
+      name: Get final run
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}'
+        authorization: { type: bearer, credential: { secret: fabro, key: token } }
+        timeoutSeconds: 30
+      position: { x: 2472, 'y': -240 }
+      isCollapsed: false
+    - id: has-pr
+      name: Succeeded with a PR?
+      type: TYPE_ACTION
+      component: if
+      configuration:
+        expression: $["Get final run"].data.body.lifecycle.status.kind == "succeeded" && $["Get final run"].data.body.pull_request != nil
+      position: { x: 2772, 'y': -240 }
+      isCollapsed: false
+    - id: comment-pr
+      name: Comment PR link
+      type: TYPE_ACTION
+      component: github.createIssueComment
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        repository: '{{ root().data.repository.full_name }}'
+        issueNumber: '{{ string(root().data.issue.number) }}'
+        body: |-
+          Fabro opened {{ $["Get final run"].data.body.pull_request.html_url }} for this issue. The test gate passed; it needs a human review before merging.
+
+          Usage: {{ $["Get final run"].data.body.usage.tokens }} tokens, cost {{ $["Get final run"].data.body.usage.cost }}.
+      position: { x: 3072, 'y': -360 }
+      isCollapsed: false
+    - id: comment-failure
+      name: Comment failure summary
+      type: TYPE_ACTION
+      component: github.createIssueComment
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        repository: '{{ root().data.repository.full_name }}'
+        issueNumber: '{{ string(root().data.issue.number) }}'
+        body: |-
+          Fabro did not produce a pull request for this issue.
+
+          - Run: `{{ $["Create Fabro run"].data.body.id }}`, status `{{ $["Get final run"].data.body.lifecycle.status.kind }}`{{ $["Get final run"].data.body.lifecycle.status.reason != nil ? " (" + string($["Get final run"].data.body.lifecycle.status.reason) + ")" : "" }}
+          - Error: {{ $["Get final run"].data.body.lifecycle.error?.message ?? "none reported" }}
+          - Polling stopped because: {{ $["Poll Fabro run"].data.done.stopReason ?? "run ended" }}
+
+          Details on the run page: {{ $["Create Fabro run"].data.body.links.web }}
+      position: { x: 3072, 'y': -120 }
+      isCollapsed: false
+
+    # ── Answers: a human reply on a `fabro` issue goes back to the run ───────
+    - id: on-issue-comment
+      name: On issue comment
+      type: TYPE_TRIGGER
+      component: github.onIssueComment
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        repository: dlapiduz/old-software-inc
+        contentFilter: ''
+      position: { x: 72, 'y': 720 }
+      isCollapsed: false
+    # Skips this app's own comments (posted by the GitHub App bot) and PRs.
+    - id: is-human-reply
+      name: Human reply on a fabro issue?
+      type: TYPE_ACTION
+      component: filter
+      configuration:
+        expression: >-
+          root().data.action == "created" && root().data.comment.user.type != "Bot"
+          && root().data.issue.pull_request == nil
+          && any(root().data.issue.labels, {.name == "fabro"})
+      position: { x: 372, 'y': 720 }
+      isCollapsed: false
+    - id: find-pending-question
+      name: Find pending question
+      type: TYPE_ACTION
+      component: readMemory
+      configuration:
+        namespace: fabro_questions
+        resultMode: latest
+        emitMode: allAtOnce
+        matchList:
+          - { name: issue_number, value: '{{ string(root().data.issue.number) }}' }
+          - { name: status, value: pending }
+      position: { x: 672, 'y': 720 }
+      isCollapsed: false
+    - id: submit-answer
+      name: Send answer to Fabro
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: POST
+        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Find pending question"].data.values[0].run_id }}/questions/{{ $["Find pending question"].data.values[0].question_id }}/answer'
+        authorization: { type: bearer, credential: { secret: fabro, key: token } }
+        contentType: application/json
+        json:
+          kind: text
+          text: '{{ root().data.comment.body }}'
+        timeoutSeconds: 30
+      position: { x: 972, 'y': 720 }
+      isCollapsed: false
+    - id: mark-answered
+      name: Mark question answered
+      type: TYPE_ACTION
+      component: upsertMemory
+      configuration:
+        namespace: fabro_questions
+        matchList:
+          - { name: run_id, value: '{{ $["Find pending question"].data.values[0].run_id }}' }
+          - { name: question_id, value: '{{ $["Find pending question"].data.values[0].question_id }}' }
+        valueList:
+          - { name: status, value: answered }
+          - { name: answered_by, value: '{{ root().data.comment.user.login }}' }
+      position: { x: 1272, 'y': 720 }
+      isCollapsed: false
+    - id: ack-answer
+      name: React to the answer
+      type: TYPE_ACTION
+      component: github.addReaction
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        repository: '{{ root().data.repository.full_name }}'
+        target: issueComment
+        commentId: '{{ string(root().data.comment.id) }}'
+        content: rocket
+      position: { x: 1572, 'y': 720 }
+      isCollapsed: false
+    - id: answer-failed
+      name: Comment answer not delivered
+      type: TYPE_ACTION
+      component: github.createIssueComment
+      integration: { id: 3eece5a0-17a3-484c-890c-73359c98554a, name: github-dlapiduz }
+      configuration:
+        repository: '{{ root().data.repository.full_name }}'
+        issueNumber: '{{ string(root().data.issue.number) }}'
+        body: 'Could not deliver that answer to Fabro (HTTP {{ $["Send answer to Fabro"].data.status }}). The question may have timed out or already been answered on the run page.'
+      position: { x: 1272, 'y': 960 }
+      isCollapsed: false
+
+  edges:
+    - { sourceId: on-issue-labeled, targetId: is-fabro-label, channel: default }
+    - { sourceId: is-fabro-label, targetId: get-issue-comments, channel: default }
+    - { sourceId: get-issue-comments, targetId: create-fabro-run, channel: success }
+    - { sourceId: create-fabro-run, targetId: start-fabro-run, channel: success }
+    - { sourceId: start-fabro-run, targetId: comment-run-started, channel: success }
+    - { sourceId: comment-run-started, targetId: poll-run, channel: default }
+    - { sourceId: poll-run, targetId: get-fabro-run, channel: next }
+    - { sourceId: get-fabro-run, targetId: has-question, channel: success }
+    - { sourceId: get-fabro-run, targetId: poll-run, channel: failure }
+    - { sourceId: has-question, targetId: poll-run, channel: 'false' }
+    - { sourceId: has-question, targetId: list-questions, channel: 'true' }
+    - { sourceId: list-questions, targetId: question-already-posted, channel: success }
+    - { sourceId: list-questions, targetId: poll-run, channel: failure }
+    - { sourceId: question-already-posted, targetId: poll-run, channel: found }
+    - { sourceId: question-already-posted, targetId: post-question, channel: notFound }
+    - { sourceId: post-question, targetId: remember-question, channel: default }
+    - { sourceId: remember-question, targetId: poll-run, channel: default }
+    - { sourceId: poll-run, targetId: settle, channel: done }
+    - { sourceId: settle, targetId: get-final-run, channel: default }
+    - { sourceId: get-final-run, targetId: has-pr, channel: success }
+    - { sourceId: has-pr, targetId: comment-pr, channel: 'true' }
+    - { sourceId: has-pr, targetId: comment-failure, channel: 'false' }
+    - { sourceId: on-issue-comment, targetId: is-human-reply, channel: default }
+    - { sourceId: is-human-reply, targetId: find-pending-question, channel: default }
+    - { sourceId: find-pending-question, targetId: submit-answer, channel: found }
+    - { sourceId: submit-answer, targetId: mark-answered, channel: success }
+    - { sourceId: submit-answer, targetId: answer-failed, channel: failure }
+    - { sourceId: mark-answered, targetId: ack-answer, channel: default }

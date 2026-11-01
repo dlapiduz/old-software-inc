@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Console
+metadata:
+  name: Fabro ticket to PR
+  canvasId: __CANVAS_ID__
+spec:
+  panels:
+    - id: instructions
+      type: markdown
+      content:
+        title: How it works
+        body: |
+          1. Label an issue in `dlapiduz/old-software-inc` with **fabro**.
+          2. [Create Fabro run](node:create-fabro-run) starts `ticket_to_pr` on the Fabro VM with the issue's title, body and comments.
+          3. [Poll Fabro run](node:poll-run) checks the run every minute. A planner question is posted on the issue by [Post question on issue](node:post-question).
+          4. Reply on the issue: [Send answer to Fabro](node:submit-answer) delivers it and reacts with 🚀.
+          5. When the run ends, the issue gets the PR link ([Comment PR link](node:comment-pr)) or a [failure summary](node:comment-failure).
+
+          Fabro opens the PR itself; nobody but a human merges it (ruleset on `main`).
