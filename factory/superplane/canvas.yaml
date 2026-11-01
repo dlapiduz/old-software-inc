@@ -248,7 +248,7 @@ spec:
         body: |-
           Fabro opened {{ $["Get final run"].data.body.pull_request.html_url }} for this issue. The test gate passed; it needs a human review before merging.
 
-          Usage: {{ $["Get final run"].data.body.usage.tokens }} tokens, cost {{ $["Get final run"].data.body.usage.cost }}.
+          Tokens: {{ $["Get final run"].data.body.usage.tokens.input }} in, {{ $["Get final run"].data.body.usage.tokens.output }} out, {{ $["Get final run"].data.body.usage.tokens.cache_read }} cache read, {{ $["Get final run"].data.body.usage.tokens.cache_write }} cache write.{{ $["Get final run"].data.body.usage.cost != nil ? " Cost: $" + string($["Get final run"].data.body.usage.cost.usd_micros / 1000000.0) + "." : "" }}
       position: { x: 3072, 'y': -360 }
       isCollapsed: false
     - id: comment-failure
@@ -306,13 +306,14 @@ spec:
           - { name: status, value: pending }
       position: { x: 672, 'y': 720 }
       isCollapsed: false
+    # Question ids look like `ask#2`; an unencoded `#` would end the path.
     - id: submit-answer
       name: Send answer to Fabro
       type: TYPE_ACTION
       component: http
       configuration:
         method: POST
-        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Find pending question"].data.values[0].run_id }}/questions/{{ $["Find pending question"].data.values[0].question_id }}/answer'
+        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Find pending question"].data.values[0].run_id }}/questions/{{ replace($["Find pending question"].data.values[0].question_id, "#", "%23") }}/answer'
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         contentType: application/json
         json:
