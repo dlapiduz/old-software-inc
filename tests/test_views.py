@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from datetime import datetime
 
+import simplejson as json
 from nose.tools import eq_
+from sqlalchemy import event
 
 from orderdesk.extensions import db
 from orderdesk.models import AuditEntry, Customer, Order, Product
@@ -338,3 +340,32 @@ class ReportViewsTest(AppTestCase):
         resp = self.client.get('/reports/customers.csv')
         eq_(resp.status_code, 200)
         self.assertTrue(resp.data.startswith('account_number,name'))
+
+
+class HealthViewsTest(AppTestCase):
+
+    def test_health_returns_ok(self):
+        resp = self.client.get('/health')
+        eq_(resp.status_code, 200)
+        eq_(json.loads(resp.data), {'status': 'ok'})
+
+    def test_health_is_json(self):
+        eq_(self.client.get('/health').mimetype, 'application/json')
+
+    def test_health_does_not_redirect(self):
+        resp = self.client.get('/health')
+        eq_(resp.status_code, 200)
+        self.assertFalse('Location' in resp.headers)
+
+    def test_health_does_not_touch_database(self):
+        statements = []
+
+        def record(conn, cursor, statement, *args):
+            statements.append(statement)
+
+        event.listen(db.engine, 'before_cursor_execute', record)
+        try:
+            self.client.get('/health')
+        finally:
+            event.remove(db.engine, 'before_cursor_execute', record)
+        eq_(statements, [])
