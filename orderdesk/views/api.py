@@ -7,7 +7,7 @@ from functools import wraps
 
 from flask import Blueprint, g, jsonify, request
 
-from orderdesk import workflow
+from orderdesk import __version__, workflow
 from orderdesk.extensions import db
 from orderdesk.models import ORDER_STATUSES, Customer, Order, Product, User
 
@@ -32,6 +32,12 @@ def token_required(f):
         g.api_user = user
         return f(*args, **kwargs)
     return wrapped
+
+
+@bp.route('/version')
+@token_required
+def version():
+    return jsonify(version=__version__)
 
 
 @bp.route('/products')
