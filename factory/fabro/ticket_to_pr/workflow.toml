@@ -15,6 +15,14 @@ issue_comments = ""
 
 # Fabro opens the PR from its run branch once the run succeeds. Never
 # auto-merge: a person reviews and merges (main is also protected by a ruleset).
+# Without this the run gets a read-only token (enough to clone) and the
+# finalizer can't push the run branch. The token is minted for this repo only
+# and is also visible to agents in the sandbox as GITHUB_TOKEN; main is
+# protected by a ruleset, so it can push branches and open PRs, not merge.
+[run.integrations.github.permissions]
+contents = "write"
+pull_requests = "write"
+
 [run.pull_request]
 enabled = true
 draft = false

@@ -52,6 +52,17 @@ spec:
         timeoutSeconds: 30
       position: { x: 672, 'y': 0 }
       isCollapsed: false
+    - id: get-workflow-version
+      name: Get workflow version
+      type: TYPE_ACTION
+      component: http
+      configuration:
+        method: GET
+        url: http://10.0.5.29:32276/api/v1/variables/TICKET_TO_PR_VERSION
+        authorization: { type: bearer, credential: { secret: fabro, key: token } }
+        timeoutSeconds: 30
+      position: { x: 822, 'y': 160 }
+      isCollapsed: false
     - id: create-fabro-run
       name: Create Fabro run
       type: TYPE_ACTION
@@ -62,7 +73,7 @@ spec:
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         contentType: application/json
         json:
-          workflow_version_id: a6d46eedb893d50355ddd74a93360ca7d659b823e5bbfb0355c48e599d07ce26
+          workflow_version_id: '{{ $["Get workflow version"].data.body.value }}'
           target: { kind: git, repo: '{{ root().data.repository.full_name }}', branch: main }
           # The repo's CI wants the PR title to start with the issue key, and
           # issues here are titled "OD-NNN: ...".
@@ -351,7 +362,8 @@ spec:
   edges:
     - { sourceId: on-issue-labeled, targetId: is-fabro-label, channel: default }
     - { sourceId: is-fabro-label, targetId: get-issue-comments, channel: default }
-    - { sourceId: get-issue-comments, targetId: create-fabro-run, channel: success }
+    - { sourceId: get-issue-comments, targetId: get-workflow-version, channel: success }
+    - { sourceId: get-workflow-version, targetId: create-fabro-run, channel: success }
     - { sourceId: create-fabro-run, targetId: start-fabro-run, channel: success }
     - { sourceId: start-fabro-run, targetId: comment-run-started, channel: success }
     - { sourceId: comment-run-started, targetId: poll-run, channel: default }
