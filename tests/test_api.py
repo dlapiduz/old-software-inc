@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from nose.tools import eq_
 
+from orderdesk import __version__
 from orderdesk.models import Order, Product
 
 from base import AppTestCase
@@ -29,6 +30,16 @@ class ApiTest(AppTestCase):
     def test_token_in_query_string(self):
         resp = self.client.get('/api/v1/products?token=%s' % self.clerk.api_token)
         eq_(resp.status_code, 200)
+
+    def test_version(self):
+        resp = self.api('get', '/version', self.clerk)
+        eq_(resp.status_code, 200)
+        eq_(resp.json_body, {'version': __version__})
+
+    def test_version_requires_token(self):
+        eq_(self.api('get', '/version').status_code, 401)
+        user = make_user(active=False)
+        eq_(self.api('get', '/version', user).status_code, 401)
 
     def test_list_products(self):
         resp = self.api('get', '/products', self.clerk)

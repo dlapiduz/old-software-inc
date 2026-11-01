@@ -114,6 +114,7 @@ See `config.py`. Environment variables:
 Send `X-OrderDesk-Token: <token>` (or `?token=`).
 
 ```
+GET  /api/v1/version
 GET  /api/v1/products[?include_discontinued=1]
 GET  /api/v1/products/<sku>
 GET  /api/v1/orders[?status=submitted&limit=50]
