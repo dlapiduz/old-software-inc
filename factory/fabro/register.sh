@@ -4,7 +4,7 @@
 # which the SuperPlane app reads before every run. Content-addressed: re-running
 # with unchanged files prints the same id. No SuperPlane change is needed.
 #
-#   FABRO_URL=http://10.0.5.29:32276 FABRO_TOKEN=... factory/fabro/register.sh
+#   FABRO_URL=<Fabro server URL> FABRO_TOKEN=... factory/fabro/register.sh
 #
 # The Fabro API only admits SuperPlane's host (and Caddy), so run this there or
 # on the Fabro VM against http://127.0.0.1:32276.

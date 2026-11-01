@@ -2,13 +2,17 @@
 # Create or update the "Fabro ticket to PR" SuperPlane app from canvas.yaml and
 # console.yaml, and the organization secret its HTTP nodes authenticate with.
 #
-#   SP_URL=https://superplane.home.lapiduz.com SP_TOKEN=<SuperPlane API token> \
-#   FABRO_TOKEN=<Fabro dev token> factory/superplane/import.sh
+#   SP_URL=<SuperPlane URL> SP_TOKEN=<SuperPlane API token> \
+#   FABRO_URL=<Fabro server URL, reachable from SuperPlane> FABRO_TOKEN=<Fabro dev token> \
+#   factory/superplane/import.sh
+#
+# FABRO_URL is substituted into canvas.yaml at import time so internal
+# addresses stay out of this (public) repository.
 #
 # Idempotent: an existing secret is updated, an existing canvas (matched by
 # name) gets a new version. Neither token is printed.
 set -euo pipefail
-: "${SP_URL:?}" "${SP_TOKEN:?}" "${FABRO_TOKEN:?}"
+: "${SP_URL:?}" "${SP_TOKEN:?}" "${FABRO_URL:?}" "${FABRO_TOKEN:?}"
 here="$(cd "$(dirname "$0")" && pwd)"
 name="Fabro ticket to PR"
 
@@ -43,12 +47,12 @@ else
   echo "canvas: updating $id"
 fi
 
-staging=$(ID="$id" python3 - "$here" <<'PY'
+staging=$(ID="$id" FABRO_URL="${FABRO_URL%/}" python3 - "$here" <<'PY'
 import base64, json, os, sys
 here = sys.argv[1]
 ops = []
 for f in ("canvas.yaml", "console.yaml"):
-    body = open(os.path.join(here, f), encoding="utf-8").read().replace("__CANVAS_ID__", os.environ["ID"])
+    body = open(os.path.join(here, f), encoding="utf-8").read().replace("__CANVAS_ID__", os.environ["ID"]).replace("__FABRO_URL__", os.environ["FABRO_URL"])
     ops.append({"path": f, "content": base64.b64encode(body.encode()).decode()})
 print(json.dumps({"operations": ops}))
 PY

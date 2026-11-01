@@ -7,7 +7,7 @@
 # GET /runs/{id} per iteration gives status, the pending question and the PR.
 #
 # Constants that differ per install:
-#   Fabro API         http://10.0.5.29:32276/api/v1
+#   Fabro API         __FABRO_URL__/api/v1
 #   workflow version  a6d46eedb893d50355ddd74a93360ca7d659b823e5bbfb0355c48e599d07ce26
 #                     (factory/fabro/register.sh; re-run and update after
 #                     changing anything under factory/fabro/ticket_to_pr)
@@ -58,7 +58,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: http://10.0.5.29:32276/api/v1/variables/TICKET_TO_PR_VERSION
+        url: __FABRO_URL__/api/v1/variables/TICKET_TO_PR_VERSION
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         timeoutSeconds: 30
       position: { x: 822, 'y': 160 }
@@ -69,7 +69,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: http://10.0.5.29:32276/api/v1/runs
+        url: __FABRO_URL__/api/v1/runs
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         contentType: application/json
         json:
@@ -94,7 +94,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}/start'
+        url: '__FABRO_URL__/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}/start'
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         timeoutSeconds: 60
       position: { x: 1272, 'y': 0 }
@@ -111,7 +111,6 @@ spec:
           Fabro picked this up (run `{{ $["Create Fabro run"].data.body.id }}`): plan, implement, run the test suite, then open a pull request.
 
           If the planner has a question it will appear here; reply in a comment and it goes back to Fabro.
-          Run page (home network / Tailscale): {{ $["Create Fabro run"].data.body.links.web }}
       position: { x: 1572, 'y': 0 }
       isCollapsed: false
 
@@ -135,7 +134,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}'
+        url: '__FABRO_URL__/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}'
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         timeoutSeconds: 30
       position: { x: 1872, 'y': 240 }
@@ -155,7 +154,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}/questions'
+        url: '__FABRO_URL__/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}/questions'
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         timeoutSeconds: 30
       position: { x: 2472, 'y': 240 }
@@ -224,7 +223,7 @@ spec:
       component: http
       configuration:
         method: GET
-        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}'
+        url: '__FABRO_URL__/api/v1/runs/{{ $["Create Fabro run"].data.body.id }}'
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         timeoutSeconds: 30
       position: { x: 2472, 'y': -240 }
@@ -265,8 +264,6 @@ spec:
           - Run: `{{ $["Create Fabro run"].data.body.id }}`, status `{{ $["Get final run"].data.body.lifecycle.status.kind }}`{{ $["Get final run"].data.body.lifecycle.status.reason != nil ? " (" + string($["Get final run"].data.body.lifecycle.status.reason) + ")" : "" }}
           - Error: {{ $["Get final run"].data.body.lifecycle.error?.message ?? "none reported" }}
           - Polling stopped because: {{ $["Poll Fabro run"].data.done.stopReason ?? "run ended" }}
-
-          Details on the run page: {{ $["Create Fabro run"].data.body.links.web }}
       position: { x: 3072, 'y': -120 }
       isCollapsed: false
 
@@ -313,7 +310,7 @@ spec:
       component: http
       configuration:
         method: POST
-        url: 'http://10.0.5.29:32276/api/v1/runs/{{ $["Find pending question"].data.values[0].run_id }}/questions/{{ replace($["Find pending question"].data.values[0].question_id, "#", "%23") }}/answer'
+        url: '__FABRO_URL__/api/v1/runs/{{ $["Find pending question"].data.values[0].run_id }}/questions/{{ replace($["Find pending question"].data.values[0].question_id, "#", "%23") }}/answer'
         authorization: { type: bearer, credential: { secret: fabro, key: token } }
         contentType: application/json
         json:
